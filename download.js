@@ -257,7 +257,10 @@ async function main() {
     }
 
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-      datesToDownload.push(new Date(d));
+      // Ensure we create a new Date object at midnight local time to avoid 
+      // DST/timezone shifts when iterating
+      const current = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      datesToDownload.push(current);
     }
   }
 

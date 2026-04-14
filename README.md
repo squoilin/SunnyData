@@ -86,6 +86,12 @@ Override the date range on the command line:
 node download.js --start 2024-06-01 --end 2024-06-30
 ```
 
+Download a specific list of dates (useful for filling gaps):
+
+```bash
+node download.js --dates 2024-09-09,2024-09-12,2025-01-02
+```
+
 Run headlessly (no visible browser window):
 
 ```bash
@@ -94,6 +100,18 @@ node download.js --headless
 
 Files are saved to `data/sunnyportal_YYYY-MM-DD.csv`.  
 Days that already exist in `data/` are skipped automatically.
+
+---
+
+### Find missing data
+
+To automatically identify gaps in your `data/` folder and generate the command to download them:
+
+```bash
+python3 find_missing.py
+```
+
+It will scan the date range between your first and last file and output the exact `node download.js --dates ...` command needed.
 
 ---
 
