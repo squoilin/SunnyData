@@ -77,6 +77,7 @@ function parseArgs(argv) {
   for (let i = 2; i < argv.length; i++) {
     if      (argv[i] === '--start'    && argv[i + 1]) args.start    = argv[++i];
     else if (argv[i] === '--end'      && argv[i + 1]) args.end      = argv[++i];
+    else if (argv[i] === '--dates'    && argv[i + 1]) args.dates    = argv[++i].split(',');
     else if (argv[i] === '--config'   && argv[i + 1]) args.config   = argv[++i];
     else if (argv[i] === '--headless')                args.headless = true;
   }
@@ -238,23 +239,36 @@ async function main() {
     process.exit(1);
   }
 
-  const today     = new Date().toISOString().slice(0, 10);
-  const startDate = new Date(args.start || config.download?.start_date || today);
-  const endDate   = new Date(args.end   || config.download?.end_date   || today);
+  let datesToDownload = [];
+  if (args.dates) {
+    datesToDownload = args.dates.map(d => new Date(d.trim()));
+  } else {
+    const today     = new Date().toISOString().slice(0, 10);
+    const startDate = new Date(args.start || config.download?.start_date || today);
+    const endDate   = new Date(args.end   || config.download?.end_date   || today);
 
-  if (isNaN(startDate) || isNaN(endDate)) {
-    console.error('Invalid date. Use YYYY-MM-DD format.');
-    process.exit(1);
-  }
-  if (startDate > endDate) {
-    console.error('--start must be before --end.');
-    process.exit(1);
+    if (isNaN(startDate) || isNaN(endDate)) {
+      console.error('Invalid date. Use YYYY-MM-DD format.');
+      process.exit(1);
+    }
+    if (startDate > endDate) {
+      console.error('--start must be before --end.');
+      process.exit(1);
+    }
+
+    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+      datesToDownload.push(new Date(d));
+    }
   }
 
   if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 
   console.log(`Portal   : ${portalUrl}`);
-  console.log(`Range    : ${toISO(startDate)} → ${toISO(endDate)}`);
+  if (args.dates) {
+    console.log(`Dates    : ${args.dates.join(', ')}`);
+  } else {
+    console.log(`Range    : ${toISO(datesToDownload[0])} → ${toISO(datesToDownload[datesToDownload.length - 1])}`);
+  }
   console.log(`Data dir : ${dataDir}\n`);
 
   const browser = await puppeteer.launch({
@@ -276,8 +290,7 @@ async function main() {
     let skipped    = 0;
     let failed     = 0;
 
-    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-      const day      = new Date(d);
+    for (const day of datesToDownload) {
       const isoDate  = toISO(day);
       const destFile = path.join(dataDir, `sunnyportal_${isoDate}.csv`);
 
