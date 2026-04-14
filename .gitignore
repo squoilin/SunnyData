@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Configuration containing credentials — NEVER commit this
+sunnydata.conf
+
+# Downloaded PV data (stored locally)
+data/*.csv
+data/*.json
+
+# Analysis outputs
+output/
+*.html
+analysis.csv
+
+# Puppeteer session recordings (may contain sensitive URLs)
+recordings/*.json
+
+# Puppeteer cache
+.cache/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+.env
+
+# OS
+.DS_Store
+Thumbs.db

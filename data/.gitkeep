@@ -1,0 +1,2 @@
+# This file keeps the data/ directory tracked by git even when it is empty.
+# Downloaded CSV files (sunnyportal_YYYY-MM-DD.csv) are stored here and are git-ignored.

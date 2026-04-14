@@ -1,0 +1,36 @@
+# SunnyData configuration — DEFAULT TEMPLATE
+#
+# Copy this file to sunnydata.conf and fill in your values.
+# sunnydata.conf is git-ignored and will never be committed.
+#
+# Lines starting with # are comments.
+
+[portal]
+# Full URL of the monitoring page on your Sunny Portal.
+# Examples:
+#   Local device (ennexOS):
+#     https://169.254.12.3/webui/Plant:1/monitoring/view-energy-and-power
+#     https://192.168.1.100/webui/Plant:1/monitoring/view-energy-and-power
+#   SMA cloud portal (sunnyportal.com) — requires adapting the selectors in download.js
+#     https://www.sunnyportal.com/...
+url = https://YOUR_PORTAL_IP/webui/Plant:1/monitoring/view-energy-and-power
+
+[credentials]
+username = your_username
+password = your_password
+
+[download]
+# Default start date for bulk downloads (YYYY-MM-DD).
+# Override on the command line with --start / --end.
+start_date = 2024-01-01
+
+# Default end date.  Leave blank to use today's date.
+end_date =
+
+# Folder where downloaded CSV files are stored (relative to this repo).
+data_dir = data
+
+[analysis]
+# Nominal peak power of the installation in kW.
+# Used for sanity checks (values > 120 % of this threshold are capped and warned).
+peak_power_kw = 10

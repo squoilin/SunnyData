@@ -1,0 +1,14 @@
+{
+  "name": "sunnydata",
+  "version": "1.0.0",
+  "description": "Automated data downloader and analyser for SMA Sunny Portal",
+  "scripts": {
+    "download": "node download.js",
+    "record": "node record.js"
+  },
+  "keywords": ["sma", "sunny-portal", "solar", "pv", "puppeteer"],
+  "license": "MIT",
+  "dependencies": {
+    "puppeteer": "^24.13.0"
+  }
+}

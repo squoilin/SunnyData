@@ -1,0 +1,2 @@
+# This file keeps the recordings/ directory tracked by git even when it is empty.
+# Recording JSON files produced by record.js are stored here and are git-ignored.
