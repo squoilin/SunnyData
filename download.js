@@ -143,10 +143,29 @@ async function selectDay(page, date) {
   await page.waitForSelector('input#mat-input-0', { timeout: 30000 });
   await page.click('input#mat-input-0', { clickCount: 3 });
   await page.type('input#mat-input-0', dateStr, { delay: 30 });
+  
+  // Pressing TAB to move focus instead of ENTER, as it's more common in MUI for 'blur' event
+  await page.keyboard.press('Tab');
+  await sleep(1000);
+
+  // Fallback: If still today, try clicking the actual date picker icon or a random place
   await page.evaluate(() => {
-    document.querySelector('input#mat-input-0').dispatchEvent(new Event('blur'));
+    const input = document.querySelector('input#mat-input-0');
+    if (input) {
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      input.dispatchEvent(new Event('blur', { bubbles: true }));
+    }
   });
-  await sleep(1500);
+
+  // Wait for the "Loading" overlay if it appears
+  try {
+    await page.waitForSelector('sma-loading-spinner-overlay', { visible: true, timeout: 2000 });
+    await page.waitForSelector('sma-loading-spinner-overlay', { hidden: true, timeout: 20000 });
+  } catch (e) {
+    // If spinner didn't appear, just wait for network
+    await page.waitForNetworkIdle({ idleTime: 1000, timeout: 15000 }).catch(() => {});
+  }
+  await sleep(2000);
 }
 
 async function expandDetailsPanel(page) {
@@ -179,13 +198,24 @@ async function triggerExport(page) {
     'sma-async-export-button button.action-secondary-base',
     { timeout: 30000 }
   );
+  // Ensure the button is visible and stable before clicking
+  await page.evaluate(() => {
+    const btn = document.querySelector('sma-async-export-button button.action-secondary-base');
+    if (btn) btn.scrollIntoView();
+  });
+  await sleep(1000);
   await page.click('sma-async-export-button button.action-secondary-base');
-  await page.waitForSelector('mat-dialog-container', { timeout: 10000 });
-  await page.waitForSelector(
-    'mat-dialog-container button.action-primary-base',
-    { timeout: 10000 }
-  );
-  await page.click('mat-dialog-container button.action-primary-base');
+  
+  // Wait for the Download Format dialog
+  await page.waitForSelector('mat-dialog-container', { timeout: 15000 });
+  
+  // Find the "CSV" option if multiple are present, or just the primary button
+  // In ennexOS, the primary button is "Download"
+  const downloadBtnSelector = 'mat-dialog-container button.action-primary-base';
+  await page.waitForSelector(downloadBtnSelector, { timeout: 10000 });
+  
+  // Click the final download button in the dialog
+  await page.click(downloadBtnSelector);
 }
 
 async function waitForNewFile(dataDir, before, date) {
@@ -288,6 +318,28 @@ async function main() {
     console.log('Waiting for chart and date picker to load...');
     await page.waitForSelector('sma-advanced-chart',   { timeout: 60000 });
     await page.waitForSelector('input#mat-input-0',    { timeout: 60000 });
+
+    // Warm-up: Select the first date twice and wait for the chart title to update
+    // from the initial "today" view to the requested date. This ensures the portal
+    // has correctly refreshed its internal state before we trigger the export.
+    if (datesToDownload.length > 0) {
+      console.log('Performing warm-up date selection...');
+      // First, select a "buffer" date that is NOT the first date we want,
+      // and NOT today, to ensure the UI has to switch.
+      const bufferDate = new Date(2023, 0, 1); 
+      await selectDay(page, bufferDate);
+      await sleep(2000);
+      
+      // Now select the actual first date
+      await selectDay(page, datesToDownload[0]);
+      await page.waitForFunction((isoDate) => {
+        const title = document.querySelector('sma-advanced-chart div.sma-tab-content-header-title');
+        const [y, m, d] = isoDate.split('-');
+        // Title usually contains Month Year or Day Month Year format
+        return title && (title.textContent.includes(y) || title.textContent.includes(m));
+      }, { timeout: 15000 }, toISO(datesToDownload[0])).catch(() => {});
+      await sleep(3000);
+    }
 
     let downloaded = 0;
     let skipped    = 0;

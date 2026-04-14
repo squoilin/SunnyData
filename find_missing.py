@@ -7,10 +7,21 @@ def get_missing_days(data_dir):
     pattern = re.compile(r'sunnyportal_(\d{4}-\d{2}-\d{2})\.csv')
     
     existing_dates = set()
+    removed_count = 0
     for filename in os.listdir(data_dir):
         match = pattern.match(filename)
         if match:
+            filepath = os.path.join(data_dir, filename)
+            # Check file size: if less than 1KB, remove it
+            if os.path.getsize(filepath) < 1024:
+                print(f"Removing small file ({os.path.getsize(filepath)} bytes): {filename}")
+                os.remove(filepath)
+                removed_count += 1
+                continue
             existing_dates.add(datetime.strptime(match.group(1), '%Y-%m-%d').date())
+    
+    if removed_count > 0:
+        print(f"Removed {removed_count} small files for re-download.")
             
     if not existing_dates:
         print("No data files found in the data folder.")
