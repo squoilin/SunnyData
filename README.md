@@ -174,21 +174,33 @@ git-ignored.
 
 ## Compatibility
 
-`download.js` targets the **ennexOS-based local Sunny Portal** — typically  
-accessible at a link-local address such as `169.254.12.3` or `192.168.x.x`.
+`download.js` targets the **SMA cloud portal** (`ennexos.sunnyportal.com`), updated for the UI as of the April 2026 recording.
 
 | CSS selector | Purpose |
 |---|---|
-| `input#mat-input-0` | Username field |
-| `input#mat-input-1` | Password field |
-| `ennexos-button#login button.action-primary-base` | Login button |
-| `input#mat-input-2` | Date picker |
-| `#mat-expansion-panel-header-1` | "Details" expansion panel |
+| `ennexos-button#login button.action-primary-base` | Landing page "Login" button |
+| `input#username` | Keycloak username field |
+| `input#password` | Keycloak password field |
+| `button.btn-primary` | Keycloak "Log in" submit button |
+| `ennexos-dialog-actions ennexos-button.ennexos-button-primary button` | Post-login banner "Close" |
+| `input#mat-input-0` | Date picker |
+| `#mat-expansion-panel-header-2` | "Details" expansion panel |
 | `sma-async-export-button button.action-secondary-base` | Export button |
 | `mat-dialog-container button.action-primary-base` | Confirm export dialog |
 
-If any of these change after a firmware update, use **recording mode** to  
-rediscover them.
+If any of these change after a portal update, use **recording mode** to rediscover them.
+
+### Legacy: local ennexOS device (recording `PVmanon_250716.json`)
+
+The original version targeting the local device (e.g. `https://169.254.12.3/...`) is preserved as
+`download_local_ennexos_250716.js`.  Its selectors differ as follows:
+
+| What | Local device (250716) | Cloud portal (2026-04-14) |
+|---|---|---|
+| Login | local form `input#mat-input-0/1` + `ennexos-button#login` | landing → Keycloak `input#username/password` + `button.btn-primary` |
+| Post-login dialog | none | banner "Close" button |
+| Date picker | `input#mat-input-2` | `input#mat-input-0` |
+| Details panel | `#mat-expansion-panel-header-1` | `#mat-expansion-panel-header-2` |
 
 ---
 

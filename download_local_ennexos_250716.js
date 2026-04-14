@@ -2,8 +2,8 @@
 /**
  * SunnyData — Automated CSV downloader for SMA Sunny Portal
  *
- * Logs in to the cloud portal (ennexos.sunnyportal.com), iterates over a date
- * range, and downloads one CSV export per day into the data/ folder.
+ * Logs in to the portal (local device or cloud), iterates over a date range,
+ * and downloads one CSV export per day into the data/ folder.
  * Files are named  sunnyportal_YYYY-MM-DD.csv.
  * Days that have already been downloaded are skipped automatically.
  *
@@ -12,24 +12,20 @@
  *
  * Defaults are read from sunnydata.conf (see sunnydata.conf.default).
  *
- * For the older LOCAL ennexOS device UI (recording PVmanon_250716.json) use:
- *   node download_local_ennexos_250716.js
- *
- * ─── CSS selectors (ennexos.sunnyportal.com, recording 2026-04-14) ───────────
+ * ─── CSS selectors ────────────────────────────────────────────────────────────
+ *  These selectors target the ennexOS-based local Sunny Portal UI.
  *  If the portal is updated and downloads break, use record.js to capture a
  *  fresh recording and compare the selectors below against the recording output.
  *
- *  | Selector                                             | Purpose            |
- *  |------------------------------------------------------|--------------------|
- *  | ennexos-button#login button.action-primary-base      | Landing "Login"    |
- *  | input#username                                       | Keycloak username  |
- *  | input#password                                       | Keycloak password  |
- *  | button.btn-primary                                   | Keycloak submit    |
- *  | ennexos-dialog-actions ennexos-button.ennexos-button-primary button | Post-login banner |
- *  | input#mat-input-0                                    | Date picker        |
- *  | #mat-expansion-panel-header-2                        | "Details" panel    |
- *  | sma-async-export-button button.action-secondary-base | Export button      |
- *  | mat-dialog-container button.action-primary-base      | Confirm export     |
+ *  | Selector                                      | Purpose              |
+ *  |-----------------------------------------------|----------------------|
+ *  | input#mat-input-0                             | Username field       |
+ *  | input#mat-input-1                             | Password field       |
+ *  | ennexos-button#login button.action-primary-base| Login button        |
+ *  | input#mat-input-2                             | Date picker          |
+ *  | #mat-expansion-panel-header-1                 | "Details" panel      |
+ *  | sma-async-export-button button.action-secondary-base | Export button |
+ *  | mat-dialog-container button.action-primary-base | Confirm export     |
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
@@ -97,79 +93,44 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 async function loginIfNeeded(page, username, password) {
   await sleep(2000);
+  const onLoginPage =
+    page.url().includes('login') ||
+    (await page.$('input#mat-input-0')) !== null;
 
-  // Step 1 — Landing page "Login" button (ennexos.sunnyportal.com start page)
-  const landingBtn = await page.$('ennexos-button#login button.action-primary-base');
-  if (landingBtn) {
-    console.log('Landing page detected — clicking Login...');
-    await landingBtn.click();
-    await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 });
-    await sleep(1500);
+  if (!onLoginPage) {
+    console.log('Already logged in or no login required.');
+    return;
   }
 
-  // Step 2 — Keycloak login form (login.sma.energy)
-  if (
-    page.url().includes('login.sma.energy') ||
-    (await page.$('input#username')) !== null
-  ) {
-    console.log('Keycloak login page detected — entering credentials...');
-    await page.waitForSelector('input#username', { timeout: 15000 });
-    await page.type('input#username', username, { delay: 50 });
-    await page.type('input#password', password, { delay: 50 });
-    await page.click('button.btn-primary');
-    await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 });
-    console.log('Login successful.');
-    await sleep(1500);
-  }
-
-  // Step 3 — Dismiss post-login banner / welcome dialog (if any)
-  try {
-    const closeBtn = await page.waitForSelector(
-      'ennexos-dialog-actions ennexos-button.ennexos-button-primary button.action-primary-base',
-      { timeout: 5000 }
-    );
-    if (closeBtn) {
-      console.log('Dismissing post-login banner dialog...');
-      await closeBtn.click();
-      await sleep(1000);
-    }
-  } catch (_) { /* no dialog — that's fine */ }
+  console.log('Login page detected — entering credentials...');
+  await page.waitForSelector('input#mat-input-0', { timeout: 15000 });
+  await page.type('input#mat-input-0', username, { delay: 50 });
+  await page.type('input#mat-input-1', password, { delay: 50 });
+  await page.click('ennexos-button#login button.action-primary-base');
+  await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 });
+  console.log('Login successful.');
 }
 
 async function selectDay(page, date) {
   const dateStr = toPickerStr(date);
-  // Cloud portal: date picker is input#mat-input-0 (was input#mat-input-2 on local device)
-  await page.waitForSelector('input#mat-input-0', { timeout: 30000 });
-  await page.click('input#mat-input-0', { clickCount: 3 });
-  await page.type('input#mat-input-0', dateStr, { delay: 30 });
+  await page.waitForSelector('input#mat-input-2', { timeout: 30000 });
+  await page.click('input#mat-input-2', { clickCount: 3 });
+  await page.type('input#mat-input-2', dateStr, { delay: 30 });
   await page.evaluate(() => {
-    document.querySelector('input#mat-input-0').dispatchEvent(new Event('blur'));
+    document.querySelector('input#mat-input-2').dispatchEvent(new Event('blur'));
   });
   await sleep(1500);
 }
 
 async function expandDetailsPanel(page) {
-  // Find the "Details" expansion panel by text content — the generated ID
-  // (mat-expansion-panel-header-N) is dynamic and changes across portal versions.
-  await page.waitForFunction(
-    () => [...document.querySelectorAll('mat-expansion-panel-header')]
-      .some(el => /details/i.test(el.textContent)),
-    { timeout: 20000 }
+  await page.waitForSelector('#mat-expansion-panel-header-1', { timeout: 20000 });
+  const expanded = await page.$eval(
+    '#mat-expansion-panel-header-1',
+    el => el.getAttribute('aria-expanded') === 'true'
   );
-
-  const isExpanded = await page.evaluate(() => {
-    const header = [...document.querySelectorAll('mat-expansion-panel-header')]
-      .find(el => /details/i.test(el.textContent));
-    return header ? header.getAttribute('aria-expanded') === 'true' : false;
-  });
-
-  if (!isExpanded) {
-    await page.evaluate(() => {
-      const header = [...document.querySelectorAll('mat-expansion-panel-header')]
-        .find(el => /details/i.test(el.textContent));
-      if (header) header.click();
-    });
-    await sleep(2000);
+  if (!expanded) {
+    await page.click('#mat-expansion-panel-header-1');
+    await sleep(1000);
   }
 }
 
@@ -187,7 +148,14 @@ async function triggerExport(page) {
   await page.click('mat-dialog-container button.action-primary-base');
 }
 
-async function waitForNewFile(dataDir, before, date) {
+async function waitForDownload(page, dataDir, date) {
+  const client = await page.target().createCDPSession();
+  await client.send('Page.setDownloadBehavior', {
+    behavior: 'allow',
+    downloadPath: dataDir,
+  });
+
+  const before = new Set(fs.readdirSync(dataDir));
   for (let i = 0; i < 40; i++) {
     await sleep(500);
     const diff = fs
@@ -203,20 +171,10 @@ async function waitForNewFile(dataDir, before, date) {
 }
 
 async function downloadDay(page, dataDir, date) {
-  // Set download directory BEFORE triggering the export to avoid race conditions.
-  // page.createCDPSession() is the current Puppeteer v20+ API.
-  const client = await page.createCDPSession();
-  await client.send('Page.setDownloadBehavior', {
-    behavior: 'allow',
-    downloadPath: dataDir,
-  });
-
   await selectDay(page, date);
   await expandDetailsPanel(page);
-
-  const before = new Set(fs.readdirSync(dataDir));
   await triggerExport(page);
-  return waitForNewFile(dataDir, before, date);
+  return waitForDownload(page, dataDir, date);
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -270,7 +228,7 @@ async function main() {
 
     console.log('Waiting for chart and date picker to load...');
     await page.waitForSelector('sma-advanced-chart',   { timeout: 60000 });
-    await page.waitForSelector('input#mat-input-0',    { timeout: 60000 });
+    await page.waitForSelector('input#mat-input-2',    { timeout: 60000 });
 
     let downloaded = 0;
     let skipped    = 0;
